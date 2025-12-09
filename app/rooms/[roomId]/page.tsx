@@ -21,6 +21,7 @@ import {
     createBookingWithConflictCheck,
     deleteBooking,
     getBookingsByRoom,
+    updateBookingWithConflictCheck,
 } from '../../lib/bookings';
 import { getUserByEmail } from '../../lib/users';
 
@@ -48,6 +49,14 @@ const buildDateTime = (date: string, time: string): Date => {
     return new Date(year, month - 1, day, hours, minutes);
 };
 
+const formatDateForForm = (date: Date): string => {
+    return date.toISOString().slice(0, 10);
+};
+
+const formatTimeForForm = (date: Date): string => {
+    return date.toTimeString().slice(0, 5);
+};
+
 export default function RoomPage() {
     const params = useParams();
     const roomId = params.roomId as string;
@@ -63,6 +72,9 @@ export default function RoomPage() {
     const [loadingBookings, setLoadingBookings] = useState(false);
     const [bookingError, setBookingError] = useState<string | null>(null);
     const [bookingSaving, setBookingSaving] = useState(false);
+    const [editingBookingId, setEditingBookingId] = useState<string | null>(
+        null
+    );
 
     const [members, setMembers] = useState<RoomMember[]>([]);
     const [membersLoading, setMembersLoading] = useState(false);
@@ -98,6 +110,8 @@ export default function RoomPage() {
 
     const loadBookings = async (currentRoomId: string) => {
         setLoadingBookings(true);
+        setBookingError(null);
+
         try {
             const data = await getBookingsByRoom(currentRoomId);
             const sorted = data
@@ -189,23 +203,34 @@ export default function RoomPage() {
         try {
             setBookingSaving(true);
 
-            await createBookingWithConflictCheck({
-                roomId: room.id,
-                userId: user.uid,
-                description,
-                start,
-                end,
-            });
+            if (editingBookingId) {
+                await updateBookingWithConflictCheck(editingBookingId, {
+                    roomId: room.id,
+                    userId: user.uid,
+                    description,
+                    start,
+                    end,
+                });
+            } else {
+                await createBookingWithConflictCheck({
+                    roomId: room.id,
+                    userId: user.uid,
+                    description,
+                    start,
+                    end,
+                });
+            }
 
             await loadBookings(room.id);
             resetBookingForm();
+            setEditingBookingId(null);
         } catch (e: unknown) {
             console.error(e);
 
             if (e instanceof Error) {
                 setBookingError(e.message);
             } else {
-                setBookingError('Failed to create booking');
+                setBookingError('Failed to save booking');
             }
         } finally {
             setBookingSaving(false);
@@ -221,12 +246,35 @@ export default function RoomPage() {
             await deleteBooking(bookingId);
 
             await loadBookings(room.id);
+            if (editingBookingId === bookingId) {
+                resetBookingForm();
+                setEditingBookingId(null);
+            }
         } catch (e) {
             console.error(e);
             setBookingError('Failed to delete booking');
         } finally {
             setBookingSaving(false);
         }
+    };
+
+    const startEditBooking = (booking: Booking) => {
+        setBookingError(null);
+
+        resetBookingForm({
+            date: formatDateForForm(booking.start),
+            startTime: formatTimeForForm(booking.start),
+            endTime: formatTimeForForm(booking.end),
+            description: booking.description ?? '',
+        });
+
+        setEditingBookingId(booking.id);
+    };
+
+    const cancelEditBooking = () => {
+        resetBookingForm();
+        setEditingBookingId(null);
+        setBookingError(null);
     };
 
     const onAddMember = async (values: AddMemberFormData) => {
@@ -484,13 +532,36 @@ export default function RoomPage() {
                                 {...registerBooking('description')}
                             />
 
-                            <button
-                                type="submit"
-                                className="bg-blue-600 text-white px-4 py-2 rounded"
-                                disabled={bookingSaving}
-                            >
-                                {bookingSaving ? 'Saving...' : 'Create booking'}
-                            </button>
+                            <div className="flex items-center gap-2">
+                                <button
+                                    type="submit"
+                                    className="bg-blue-600 text-white px-4 py-2 rounded"
+                                    disabled={bookingSaving}
+                                >
+                                    {bookingSaving
+                                        ? 'Saving...'
+                                        : editingBookingId
+                                          ? 'Save changes'
+                                          : 'Create booking'}
+                                </button>
+
+                                {editingBookingId && (
+                                    <button
+                                        type="button"
+                                        onClick={cancelEditBooking}
+                                        className="text-sm text-gray-300 hover:underline"
+                                        disabled={bookingSaving}
+                                    >
+                                        Cancel edit
+                                    </button>
+                                )}
+                            </div>
+
+                            {editingBookingId && (
+                                <p className="text-xs text-yellow-400">
+                                    You are editing an existing booking.
+                                </p>
+                            )}
 
                             {bookingError && (
                                 <p className="text-red-500 text-sm">
@@ -542,15 +613,27 @@ export default function RoomPage() {
                                     </div>
 
                                     {isAdmin && (
-                                        <button
-                                            onClick={() =>
-                                                handleDeleteBooking(b.id)
-                                            }
-                                            className="text-sm text-red-500 hover:underline"
-                                            disabled={bookingSaving}
-                                        >
-                                            Cancel
-                                        </button>
+                                        <div className="flex flex-col items-end gap-1">
+                                            <button
+                                                type="button"
+                                                onClick={() =>
+                                                    startEditBooking(b)
+                                                }
+                                                className="text-sm text-blue-500 hover:underline"
+                                                disabled={bookingSaving}
+                                            >
+                                                Edit
+                                            </button>
+                                            <button
+                                                onClick={() =>
+                                                    handleDeleteBooking(b.id)
+                                                }
+                                                className="text-sm text-red-500 hover:underline"
+                                                disabled={bookingSaving}
+                                            >
+                                                Cancel
+                                            </button>
+                                        </div>
                                     )}
                                 </li>
                             ))}
