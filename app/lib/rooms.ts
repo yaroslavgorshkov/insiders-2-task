@@ -93,3 +93,79 @@ export const deleteRoom = async (id: string): Promise<void> => {
     const ref = doc(db, 'rooms', id);
     await deleteDoc(ref);
 };
+
+export type RoomRole = 'admin' | 'user';
+
+export type RoomMember = {
+    id: string;
+    roomId: string;
+    userId: string;
+    email: string;
+    role: RoomRole;
+};
+
+type RoomMemberFirestore = {
+    userId: string;
+    email: string;
+    role: RoomRole;
+};
+
+const getMembersCollection = (roomId: string) =>
+    collection(db, 'rooms', roomId, 'members');
+
+const mapRoomMemberFromSnap =
+    (roomId: string) =>
+    (snap: QueryDocumentSnapshot<DocumentData>): RoomMember => {
+        const data = snap.data() as RoomMemberFirestore;
+
+        return {
+            id: snap.id,
+            roomId,
+            userId: data.userId,
+            email: data.email,
+            role: data.role,
+        };
+    };
+
+export const getRoomMembers = async (roomId: string): Promise<RoomMember[]> => {
+    const col = getMembersCollection(roomId);
+    const snapshot = await getDocs(col);
+
+    return snapshot.docs.map(mapRoomMemberFromSnap(roomId));
+};
+
+export const addRoomMember = async (params: {
+    roomId: string;
+    userId: string;
+    email: string;
+    role: RoomRole;
+}): Promise<string> => {
+    const { roomId, userId, email, role } = params;
+
+    const col = getMembersCollection(roomId);
+
+    const existingSnap = await getDocs(col);
+    const existing = existingSnap.docs
+        .map(mapRoomMemberFromSnap(roomId))
+        .find((m) => m.userId === userId);
+
+    if (existing) {
+        throw new Error('User is already a member of this room');
+    }
+
+    const docRef = await addDoc(col, {
+        userId,
+        email,
+        role,
+    });
+
+    return docRef.id;
+};
+
+export const removeRoomMember = async (
+    roomId: string,
+    memberId: string
+): Promise<void> => {
+    const ref = doc(db, 'rooms', roomId, 'members', memberId);
+    await deleteDoc(ref);
+};

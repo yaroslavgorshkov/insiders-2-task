@@ -5,7 +5,16 @@ import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { useForm } from 'react-hook-form';
 
-import { getRoomById, updateRoom, Room } from '../../lib/rooms';
+import {
+    getRoomById,
+    updateRoom,
+    Room,
+    RoomMember,
+    RoomRole,
+    getRoomMembers,
+    addRoomMember,
+    removeRoomMember,
+} from '../../lib/rooms';
 import { useAuthStore } from '../../store/auth';
 import {
     Booking,
@@ -13,6 +22,7 @@ import {
     deleteBooking,
     getBookingsByRoom,
 } from '../../lib/bookings';
+import { getUserByEmail } from '../../lib/users';
 
 type RoomFormData = {
     name: string;
@@ -24,6 +34,11 @@ type BookingFormData = {
     startTime: string;
     endTime: string;
     description: string;
+};
+
+type AddMemberFormData = {
+    email: string;
+    role: RoomRole;
 };
 
 const buildDateTime = (date: string, time: string): Date => {
@@ -49,6 +64,11 @@ export default function RoomPage() {
     const [bookingError, setBookingError] = useState<string | null>(null);
     const [bookingSaving, setBookingSaving] = useState(false);
 
+    const [members, setMembers] = useState<RoomMember[]>([]);
+    const [membersLoading, setMembersLoading] = useState(false);
+    const [membersError, setMembersError] = useState<string | null>(null);
+    const [membersSaving, setMembersSaving] = useState(false);
+
     const {
         register,
         handleSubmit,
@@ -61,7 +81,20 @@ export default function RoomPage() {
         reset: resetBookingForm,
     } = useForm<BookingFormData>();
 
+    const {
+        register: registerMember,
+        handleSubmit: handleSubmitMember,
+        reset: resetMemberForm,
+    } = useForm<AddMemberFormData>();
+
     const isOwner = user && room && room.createdBy === user.uid;
+
+    const isAdmin = Boolean(
+        user &&
+        room &&
+        (room.createdBy === user.uid ||
+            members.some((m) => m.userId === user.uid && m.role === 'admin'))
+    );
 
     const loadBookings = async (currentRoomId: string) => {
         setLoadingBookings(true);
@@ -76,6 +109,20 @@ export default function RoomPage() {
             setBookingError('Failed to load bookings');
         } finally {
             setLoadingBookings(false);
+        }
+    };
+
+    const loadMembers = async (currentRoomId: string) => {
+        setMembersLoading(true);
+        setMembersError(null);
+        try {
+            const data = await getRoomMembers(currentRoomId);
+            setMembers(data);
+        } catch (e) {
+            console.error(e);
+            setMembersError('Failed to load members');
+        } finally {
+            setMembersLoading(false);
         }
     };
 
@@ -96,7 +143,7 @@ export default function RoomPage() {
                     description: data.description,
                 });
 
-                await loadBookings(roomId);
+                await Promise.all([loadBookings(roomId), loadMembers(roomId)]);
             } catch (e) {
                 console.error(e);
                 setRoomError('Failed to load room');
@@ -130,7 +177,7 @@ export default function RoomPage() {
     };
 
     const onBookingSubmit = async (values: BookingFormData) => {
-        if (!user || !room) return;
+        if (!user || !room || !isAdmin) return;
 
         setBookingError(null);
 
@@ -166,19 +213,67 @@ export default function RoomPage() {
     };
 
     const handleDeleteBooking = async (bookingId: string) => {
+        if (!room || !isAdmin) return;
+
         try {
             setBookingError(null);
             setBookingSaving(true);
             await deleteBooking(bookingId);
 
-            if (room) {
-                await loadBookings(room.id);
-            }
+            await loadBookings(room.id);
         } catch (e) {
             console.error(e);
             setBookingError('Failed to delete booking');
         } finally {
             setBookingSaving(false);
+        }
+    };
+
+    const onAddMember = async (values: AddMemberFormData) => {
+        if (!room || !isAdmin) return;
+
+        setMembersError(null);
+        setMembersSaving(true);
+
+        try {
+            const userProfile = await getUserByEmail(values.email.trim());
+
+            if (!userProfile) {
+                setMembersError('User with this email was not found');
+                return;
+            }
+
+            await addRoomMember({
+                roomId: room.id,
+                userId: userProfile.id,
+                email: userProfile.email,
+                role: values.role,
+            });
+
+            await loadMembers(room.id);
+            resetMemberForm();
+        } catch (e) {
+            console.error(e);
+            setMembersError('Failed to add member');
+        } finally {
+            setMembersSaving(false);
+        }
+    };
+
+    const handleRemoveMember = async (memberId: string) => {
+        if (!room || !isAdmin) return;
+
+        setMembersError(null);
+        setMembersSaving(true);
+
+        try {
+            await removeRoomMember(room.id, memberId);
+            await loadMembers(room.id);
+        } catch (e) {
+            console.error(e);
+            setMembersError('Failed to remove member');
+        } finally {
+            setMembersSaving(false);
         }
     };
 
@@ -255,59 +350,162 @@ export default function RoomPage() {
                 )}
             </div>
 
+            <div className="border rounded p-4 space-y-3">
+                <h2 className="text-lg font-semibold">Members</h2>
+
+                {membersLoading ? (
+                    <p>Loading members...</p>
+                ) : (
+                    <>
+                        {members.length === 0 ? (
+                            <p className="text-sm text-gray-400">
+                                No members yet.
+                            </p>
+                        ) : (
+                            <ul className="space-y-1 text-sm">
+                                {members.map((m) => (
+                                    <li
+                                        key={m.id}
+                                        className="flex items-center justify-between"
+                                    >
+                                        <div>
+                                            <span className="font-medium">
+                                                {m.email}
+                                            </span>{' '}
+                                            <span className="text-xs text-gray-400">
+                                                (
+                                                {m.role === 'admin'
+                                                    ? 'Admin'
+                                                    : 'User'}
+                                                )
+                                            </span>
+                                        </div>
+                                        {isAdmin &&
+                                            user &&
+                                            user.uid !== m.userId && (
+                                                <button
+                                                    onClick={() =>
+                                                        handleRemoveMember(m.id)
+                                                    }
+                                                    className="text-xs text-red-500 hover:underline"
+                                                    disabled={membersSaving}
+                                                >
+                                                    Remove
+                                                </button>
+                                            )}
+                                    </li>
+                                ))}
+                            </ul>
+                        )}
+
+                        {isAdmin ? (
+                            <form
+                                className="mt-3 space-y-2"
+                                onSubmit={handleSubmitMember(onAddMember)}
+                            >
+                                <div className="flex flex-col md:flex-row gap-2">
+                                    <input
+                                        type="email"
+                                        className="flex-1 p-2 border rounded"
+                                        placeholder="User email"
+                                        {...registerMember('email', {
+                                            required: true,
+                                        })}
+                                    />
+                                    <select
+                                        className="p-2 border rounded md:w-32"
+                                        defaultValue="user"
+                                        {...registerMember('role', {
+                                            required: true,
+                                        })}
+                                    >
+                                        <option value="user">User</option>
+                                        <option value="admin">Admin</option>
+                                    </select>
+                                </div>
+                                <button
+                                    type="submit"
+                                    className="bg-blue-600 text-white px-4 py-2 rounded text-sm"
+                                    disabled={membersSaving}
+                                >
+                                    {membersSaving ? 'Adding...' : 'Add member'}
+                                </button>
+                                {membersError && (
+                                    <p className="text-red-500 text-sm">
+                                        {membersError}
+                                    </p>
+                                )}
+                            </form>
+                        ) : (
+                            <p className="text-xs text-gray-500">
+                                Only room admins can manage members.
+                            </p>
+                        )}
+                    </>
+                )}
+            </div>
+
             <div className="border rounded p-4 space-y-4">
                 <h2 className="text-lg font-semibold">Bookings</h2>
 
                 {user ? (
-                    <form
-                        className="space-y-3"
-                        onSubmit={handleSubmitBooking(onBookingSubmit)}
-                    >
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-                            <input
-                                type="date"
-                                className="p-2 border rounded"
-                                {...registerBooking('date', { required: true })}
-                            />
-                            <input
-                                type="time"
-                                className="p-2 border rounded"
-                                {...registerBooking('startTime', {
-                                    required: true,
-                                })}
-                            />
-                            <input
-                                type="time"
-                                className="p-2 border rounded"
-                                {...registerBooking('endTime', {
-                                    required: true,
-                                })}
-                            />
-                        </div>
-                        <textarea
-                            className="w-full p-2 border rounded"
-                            placeholder="Booking description"
-                            rows={2}
-                            {...registerBooking('description')}
-                        />
-
-                        <button
-                            type="submit"
-                            className="bg-blue-600 text-white px-4 py-2 rounded"
-                            disabled={bookingSaving}
+                    isAdmin ? (
+                        <form
+                            className="space-y-3"
+                            onSubmit={handleSubmitBooking(onBookingSubmit)}
                         >
-                            {bookingSaving ? 'Saving...' : 'Create booking'}
-                        </button>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                                <input
+                                    type="date"
+                                    className="p-2 border rounded"
+                                    {...registerBooking('date', {
+                                        required: true,
+                                    })}
+                                />
+                                <input
+                                    type="time"
+                                    className="p-2 border rounded"
+                                    {...registerBooking('startTime', {
+                                        required: true,
+                                    })}
+                                />
+                                <input
+                                    type="time"
+                                    className="p-2 border rounded"
+                                    {...registerBooking('endTime', {
+                                        required: true,
+                                    })}
+                                />
+                            </div>
+                            <textarea
+                                className="w-full p-2 border rounded"
+                                placeholder="Booking description"
+                                rows={2}
+                                {...registerBooking('description')}
+                            />
 
-                        {bookingError && (
-                            <p className="text-red-500 text-sm">
-                                {bookingError}
-                            </p>
-                        )}
-                    </form>
+                            <button
+                                type="submit"
+                                className="bg-blue-600 text-white px-4 py-2 rounded"
+                                disabled={bookingSaving}
+                            >
+                                {bookingSaving ? 'Saving...' : 'Create booking'}
+                            </button>
+
+                            {bookingError && (
+                                <p className="text-red-500 text-sm">
+                                    {bookingError}
+                                </p>
+                            )}
+                        </form>
+                    ) : (
+                        <p className="text-sm text-gray-400">
+                            Only room admins can create bookings.
+                        </p>
+                    )
                 ) : (
                     <p className="text-sm text-gray-400">
-                        Log in to create bookings.
+                        Log in to view and create bookings.
                     </p>
                 )}
 
@@ -343,7 +541,7 @@ export default function RoomPage() {
                                         </div>
                                     </div>
 
-                                    {user && user.uid === b.userId && (
+                                    {isAdmin && (
                                         <button
                                             onClick={() =>
                                                 handleDeleteBooking(b.id)

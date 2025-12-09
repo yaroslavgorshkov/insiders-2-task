@@ -2,6 +2,7 @@
 
 import { useForm } from 'react-hook-form';
 import { registerUser } from '../lib/auth';
+import { createUserProfile } from '../lib/users';
 
 type FormData = {
     name: string;
@@ -13,7 +14,13 @@ export default function RegisterPage() {
     const { register, handleSubmit } = useForm<FormData>();
 
     const onSubmit = async (data: FormData) => {
-        await registerUser(data.email, data.password, data.name);
+        const user = await registerUser(data.email, data.password, data.name);
+
+        await createUserProfile({
+            id: user.uid,
+            email: user.email ?? data.email,
+            name: data.name,
+        });
     };
 
     return (
