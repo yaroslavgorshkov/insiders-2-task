@@ -19,14 +19,14 @@ export default function Home() {
                         href="/login"
                         className="text-blue-500 hover:text-blue-400 underline transition block"
                     >
-                        Login →
+                        Login
                     </Link>
 
                     <Link
                         href="/register"
                         className="text-blue-500 hover:text-blue-400 underline transition block"
                     >
-                        Register →
+                        Register
                     </Link>
                 </div>
             </div>
@@ -51,7 +51,7 @@ export default function Home() {
                     href="/rooms"
                     className="text-blue-500 hover:text-blue-400 underline transition block"
                 >
-                    Go to Rooms →
+                    Go to Rooms
                 </Link>
             </div>
         </div>

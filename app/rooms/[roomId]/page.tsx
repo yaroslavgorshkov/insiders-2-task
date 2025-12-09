@@ -383,7 +383,7 @@ export default function RoomPage() {
             <div className="flex items-center justify-between">
                 <h1 className="text-2xl font-bold">Room: {room.name}</h1>
                 <Link href="/rooms" className="text-sm text-blue-500 underline">
-                    ← Back to rooms
+                    Back to rooms
                 </Link>
             </div>
 
@@ -428,7 +428,7 @@ export default function RoomPage() {
                             {room.description}
                         </div>
                         <p className="text-xs text-gray-500 mt-2">
-                            You don&apos;t have permission to edit this room.
+                            You don`t have permission to edit this room.
                         </p>
                     </div>
                 )}
@@ -503,8 +503,18 @@ export default function RoomPage() {
                                             defaultValue="user"
                                             {...registerMember('role')}
                                         >
-                                            <option value="user">User</option>
-                                            <option value="admin">Admin</option>
+                                            <option
+                                                className="text-black"
+                                                value="user"
+                                            >
+                                                User
+                                            </option>
+                                            <option
+                                                className="text-black"
+                                                value="admin"
+                                            >
+                                                Admin
+                                            </option>
                                         </select>
                                     )}
                                 </div>
@@ -644,7 +654,7 @@ export default function RoomPage() {
                                                 hour: '2-digit',
                                                 minute: '2-digit',
                                             })}
-                                            {' – '}
+                                            {' - '}
                                             {b.end.toLocaleTimeString([], {
                                                 hour: '2-digit',
                                                 minute: '2-digit',

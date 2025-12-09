@@ -49,8 +49,11 @@ const mapBookingFromSnap = (
 };
 
 export const getBookingsByRoom = async (roomId: string): Promise<Booking[]> => {
-    const q = query(bookingsCollection, where('roomId', '==', roomId));
-    const snapshot = await getDocs(q);
+    const bookingsQuery = query(
+        bookingsCollection,
+        where('roomId', '==', roomId)
+    );
+    const snapshot = await getDocs(bookingsQuery);
 
     return snapshot.docs.map(mapBookingFromSnap);
 };
@@ -68,8 +71,8 @@ const hasTimeConflict = (
     start: Date,
     end: Date
 ): boolean => {
-    return bookings.some((b) => {
-        const overlaps = start < b.end && end > b.start;
+    return bookings.some((booking) => {
+        const overlaps = start < booking.end && end > booking.start;
         return overlaps;
     });
 };
@@ -111,7 +114,7 @@ export const updateBookingWithConflictCheck = async (
     }
 
     const existing = await getBookingsByRoom(roomId);
-    const others = existing.filter((b) => b.id !== bookingId);
+    const others = existing.filter((booking) => booking.id !== bookingId);
 
     if (hasTimeConflict(others, start, end)) {
         throw new Error('Time slot already booked');
@@ -129,6 +132,6 @@ export const updateBookingWithConflictCheck = async (
 };
 
 export const deleteBooking = async (id: string): Promise<void> => {
-    const ref = doc(db, 'bookings', id);
-    await deleteDoc(ref);
+    const bookingRef = doc(db, 'bookings', id);
+    await deleteDoc(bookingRef);
 };

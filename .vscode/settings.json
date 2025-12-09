@@ -55,5 +55,5 @@
         "eslint",
         "prettier"
     ],
-    "cSpell.words": []
+    "cSpell.words": ["Firestore"]
 }

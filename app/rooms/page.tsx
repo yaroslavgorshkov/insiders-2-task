@@ -170,7 +170,7 @@ export default function RoomsPage() {
                     href="/"
                     className="text-blue-500 hover:text-blue-400 underline transition text-sm"
                 >
-                    ← Back to Home
+                    Back to Home
                 </Link>
             </div>
         </div>

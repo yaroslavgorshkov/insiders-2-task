@@ -9,10 +9,10 @@ export const Providers = ({ children }: { children: ReactNode }) => {
     const setUser = useAuthStore((s) => s.setUser);
 
     useEffect(() => {
-        const unsub = onAuthStateChanged(auth, (user) => {
+        const unsubscribe = onAuthStateChanged(auth, (user) => {
             setUser(user);
         });
-        return () => unsub();
+        return () => unsubscribe();
     }, []);
 
     return <>{children}</>;

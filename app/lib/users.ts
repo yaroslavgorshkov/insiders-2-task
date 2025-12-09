@@ -23,9 +23,9 @@ export const createUserProfile = async (params: {
     email: string;
     name: string;
 }): Promise<void> => {
-    const ref = doc(usersCollection, params.id);
+    const userRef = doc(usersCollection, params.id);
 
-    await setDoc(ref, {
+    await setDoc(userRef, {
         email: params.email,
         name: params.name,
     });
@@ -34,8 +34,8 @@ export const createUserProfile = async (params: {
 export const getUserByEmail = async (
     email: string
 ): Promise<UserProfile | null> => {
-    const q = query(usersCollection, where('email', '==', email));
-    const snapshot: QuerySnapshot<DocumentData> = await getDocs(q);
+    const userQuery = query(usersCollection, where('email', '==', email));
+    const snapshot: QuerySnapshot<DocumentData> = await getDocs(userQuery);
 
     if (snapshot.empty) return null;
 

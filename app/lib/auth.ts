@@ -11,18 +11,29 @@ export const registerUser = async (
     password: string,
     name: string
 ) => {
-    const result = await createUserWithEmailAndPassword(auth, email, password);
+    const userCredential = await createUserWithEmailAndPassword(
+        auth,
+        email,
+        password
+    );
 
-    await updateProfile(result.user, {
+    const user = userCredential.user;
+
+    await updateProfile(user, {
         displayName: name,
     });
 
-    return result.user;
+    return user;
 };
 
 export const loginUser = async (email: string, password: string) => {
-    const result = await signInWithEmailAndPassword(auth, email, password);
-    return result.user;
+    const userCredential = await signInWithEmailAndPassword(
+        auth,
+        email,
+        password
+    );
+
+    return userCredential.user;
 };
 
 export const logoutUser = async () => {
