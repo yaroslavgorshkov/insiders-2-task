@@ -1,0 +1,59 @@
+{
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "editor.formatOnType": false,
+    "editor.formatOnPaste": true,
+    "editor.formatOnSave": true,
+    "editor.formatOnSaveMode": "file",
+    "files.autoSave": "onFocusChange",
+
+    "editor.codeActionsOnSave": {
+        "source.fixAll": "always",
+        "source.fixAll.eslint": "always"
+    },
+
+    "eslint.validate": [
+        "javascript",
+        "javascriptreact",
+        "typescript",
+        "typescriptreact"
+    ],
+    "eslint.useFlatConfig": true,
+
+    "[typescriptreact]": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode"
+    },
+    "editor.tabSize": 4,
+    "[javascript]": {
+        "editor.tabSize": 4
+    },
+    "[typescript]": {
+        "editor.tabSize": 4,
+        "editor.defaultFormatter": "esbenp.prettier-vscode"
+    },
+    "prettier.tabWidth": 4,
+    "[jsonc]": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode"
+    },
+    "tailwindCSS.experimental.classRegex": [
+        ["(?:clsx|cn)\\(([^)]*)\\)", "'([^']*)'|\"([^\"]*)\"|`([^`]*)`"]
+    ],
+    "cSpell.language": "en",
+    "cSpell.enabledFileTypes": {
+        "typescript": true,
+        "typescriptreact": true,
+        "javascript": true,
+        "javascriptreact": true,
+        "json": true,
+        "jsonc": true,
+        "markdown": true
+    },
+    "cSpell.enabled": true,
+    "cSpell.ignoreWords": [
+        "clsx",
+        "tailwindcss",
+        "typescript",
+        "eslint",
+        "prettier"
+    ],
+    "cSpell.words": []
+}
