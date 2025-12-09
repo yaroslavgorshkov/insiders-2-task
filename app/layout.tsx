@@ -8,7 +8,7 @@ export default function RootLayout({
 }) {
     return (
         <html lang="en">
-            <body className="p-8">
+            <body className="p-8 box-border">
                 <Providers>{children}</Providers>
             </body>
         </html>

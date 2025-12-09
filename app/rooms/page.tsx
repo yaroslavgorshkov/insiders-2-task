@@ -90,7 +90,7 @@ export default function RoomsPage() {
     }
 
     return (
-        <div className="max-w-2xl mx-auto space-y-6">
+        <div className="max-w-2xl mx-auto space-y-8 pb-10">
             <h1 className="text-2xl font-bold">Meeting rooms</h1>
 
             <form
@@ -113,7 +113,7 @@ export default function RoomsPage() {
 
                 <button
                     type="submit"
-                    className="bg-blue-600 text-white px-4 py-2 rounded"
+                    className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition"
                     disabled={loading}
                 >
                     {loading ? 'Saving...' : 'Create room'}
@@ -163,6 +163,15 @@ export default function RoomsPage() {
                         </li>
                     ))}
                 </ul>
+            </div>
+
+            <div className="pt-6 border-t border-gray-700 text-center">
+                <Link
+                    href="/"
+                    className="text-blue-500 hover:text-blue-400 underline transition text-sm"
+                >
+                    ← Back to Home
+                </Link>
             </div>
         </div>
     );
