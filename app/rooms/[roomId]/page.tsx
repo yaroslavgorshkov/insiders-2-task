@@ -287,20 +287,29 @@ export default function RoomPage() {
         setMembersSaving(true);
 
         try {
-            const userProfile = await getUserByEmail(values.email.trim());
+            const email = values.email.trim();
+
+            const userProfile = await getUserByEmail(email);
 
             if (!userProfile) {
                 setMembersError('User with this email was not found');
                 return;
             }
 
-            const role: RoomRole = values.role ?? 'user';
+            const alreadyMember = members.some(
+                (m) => m.userId === userProfile.id
+            );
+
+            if (alreadyMember) {
+                setMembersError('This user is already a member of the room');
+                return;
+            }
 
             await addRoomMember({
                 roomId: room.id,
                 userId: userProfile.id,
                 email: userProfile.email,
-                role,
+                role: values.role ?? 'user',
             });
 
             await loadMembers(room.id);
@@ -332,6 +341,10 @@ export default function RoomPage() {
 
     const canRemoveMember = (member: RoomMember): boolean => {
         if (!user || !room) return false;
+
+        if (member.role === 'owner') {
+            return false;
+        }
 
         if (member.userId === room.createdBy) {
             return false;
@@ -445,9 +458,11 @@ export default function RoomPage() {
                                             </span>{' '}
                                             <span className="text-xs text-gray-400">
                                                 (
-                                                {m.role === 'admin'
-                                                    ? 'Admin'
-                                                    : 'User'}
+                                                {m.role === 'owner'
+                                                    ? 'Owner'
+                                                    : m.role === 'admin'
+                                                      ? 'Admin'
+                                                      : 'User'}
                                                 )
                                             </span>
                                         </div>

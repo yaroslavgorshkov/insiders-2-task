@@ -2,10 +2,11 @@
 
 import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
-import { useAuthStore } from '../store/auth';
-import { useRouter } from 'next/navigation';
-import { createRoom, getRooms, Room, deleteRoom } from '../lib/rooms';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+
+import { useAuthStore } from '../store/auth';
+import { createRoom, getRoomsForUser, deleteRoom, Room } from '../lib/rooms';
 
 type RoomFormData = {
     name: string;
@@ -31,7 +32,7 @@ export default function RoomsPage() {
         const load = async () => {
             setLoading(true);
             try {
-                const data = await getRooms();
+                const data = await getRoomsForUser(user.uid);
                 setRooms(data);
             } catch (e) {
                 console.error(e);
@@ -48,12 +49,19 @@ export default function RoomsPage() {
         if (!user) return;
 
         setError(null);
+        setLoading(true);
 
         try {
-            setLoading(true);
-            await createRoom(data.name, data.description, user.uid);
-            const updated = await getRooms();
+            await createRoom(
+                data.name,
+                data.description,
+                user.uid,
+                user.email ?? ''
+            );
+
+            const updated = await getRoomsForUser(user.uid);
             setRooms(updated);
+
             reset();
         } catch (e) {
             console.error(e);
@@ -67,6 +75,7 @@ export default function RoomsPage() {
         try {
             setLoading(true);
             await deleteRoom(id);
+
             setRooms((prev) => prev.filter((room) => room.id !== id));
         } catch (e) {
             console.error(e);
@@ -118,7 +127,7 @@ export default function RoomsPage() {
 
                 {rooms.length === 0 && (
                     <p className="text-sm text-gray-400">
-                        No rooms yet. Create the first one above.
+                        You are not a member of any rooms yet.
                     </p>
                 )}
 
