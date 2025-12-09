@@ -39,7 +39,7 @@ type BookingFormData = {
 
 type AddMemberFormData = {
     email: string;
-    role: RoomRole;
+    role?: RoomRole;
 };
 
 const buildDateTime = (date: string, time: string): Date => {
@@ -99,7 +99,7 @@ export default function RoomPage() {
         reset: resetMemberForm,
     } = useForm<AddMemberFormData>();
 
-    const isOwner = user && room && room.createdBy === user.uid;
+    const isOwner = Boolean(user && room && room.createdBy === user.uid);
 
     const isAdmin = Boolean(
         user &&
@@ -107,6 +107,8 @@ export default function RoomPage() {
         (room.createdBy === user.uid ||
             members.some((m) => m.userId === user.uid && m.role === 'admin'))
     );
+
+    const isAdminButNotOwner = Boolean(isAdmin && !isOwner);
 
     const loadBookings = async (currentRoomId: string) => {
         setLoadingBookings(true);
@@ -246,6 +248,7 @@ export default function RoomPage() {
             await deleteBooking(bookingId);
 
             await loadBookings(room.id);
+
             if (editingBookingId === bookingId) {
                 resetBookingForm();
                 setEditingBookingId(null);
@@ -291,11 +294,13 @@ export default function RoomPage() {
                 return;
             }
 
+            const role: RoomRole = values.role ?? 'user';
+
             await addRoomMember({
                 roomId: room.id,
                 userId: userProfile.id,
                 email: userProfile.email,
-                role: values.role,
+                role,
             });
 
             await loadMembers(room.id);
@@ -323,6 +328,24 @@ export default function RoomPage() {
         } finally {
             setMembersSaving(false);
         }
+    };
+
+    const canRemoveMember = (member: RoomMember): boolean => {
+        if (!user || !room) return false;
+
+        if (member.userId === room.createdBy) {
+            return false;
+        }
+
+        if (isOwner) {
+            return user.uid !== member.userId;
+        }
+
+        if (isAdminButNotOwner) {
+            return member.role === 'user' && user.uid !== member.userId;
+        }
+
+        return false;
     };
 
     if (loadingRoom) {
@@ -428,19 +451,17 @@ export default function RoomPage() {
                                                 )
                                             </span>
                                         </div>
-                                        {isAdmin &&
-                                            user &&
-                                            user.uid !== m.userId && (
-                                                <button
-                                                    onClick={() =>
-                                                        handleRemoveMember(m.id)
-                                                    }
-                                                    className="text-xs text-red-500 hover:underline"
-                                                    disabled={membersSaving}
-                                                >
-                                                    Remove
-                                                </button>
-                                            )}
+                                        {isAdmin && canRemoveMember(m) && (
+                                            <button
+                                                onClick={() =>
+                                                    handleRemoveMember(m.id)
+                                                }
+                                                className="text-xs text-red-500 hover:underline"
+                                                disabled={membersSaving}
+                                            >
+                                                Remove
+                                            </button>
+                                        )}
                                     </li>
                                 ))}
                             </ul>
@@ -460,16 +481,17 @@ export default function RoomPage() {
                                             required: true,
                                         })}
                                     />
-                                    <select
-                                        className="p-2 border rounded md:w-32"
-                                        defaultValue="user"
-                                        {...registerMember('role', {
-                                            required: true,
-                                        })}
-                                    >
-                                        <option value="user">User</option>
-                                        <option value="admin">Admin</option>
-                                    </select>
+
+                                    {isOwner && (
+                                        <select
+                                            className="p-2 border rounded md:w-32"
+                                            defaultValue="user"
+                                            {...registerMember('role')}
+                                        >
+                                            <option value="user">User</option>
+                                            <option value="admin">Admin</option>
+                                        </select>
+                                    )}
                                 </div>
                                 <button
                                     type="submit"
@@ -481,6 +503,12 @@ export default function RoomPage() {
                                 {membersError && (
                                     <p className="text-red-500 text-sm">
                                         {membersError}
+                                    </p>
+                                )}
+                                {isAdminButNotOwner && (
+                                    <p className="text-xs text-gray-500">
+                                        As admin you can add only users. Only
+                                        room owner can add admins.
                                     </p>
                                 )}
                             </form>
